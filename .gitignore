@@ -1,1 +1,6 @@
-cfg/forban.cfg
+*.pyc
+*fid
+*.pid
+var/*
+!var/share/forban
+
