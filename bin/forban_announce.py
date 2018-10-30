@@ -23,12 +23,20 @@ import os
 import logging
 import logging.handlers
 import ConfigParser
+import subprocess
+
 
 def guesspath():
+    global lpath
     pp = os.path.realpath(sys.argv[0])
     lpath = os.path.split(pp)
     bis = os.path.split(lpath[0])
     return bis[0]
+
+
+def get_cjdns_peers():
+    return subprocess.check_output(["/bin/bash", lpath[0] + "/cjdns_peers.sh"]).strip().split("\n")
+
 
 config = ConfigParser.RawConfigParser()
 config.read(os.path.join(guesspath(),"cfg","forban.cfg"))
@@ -98,29 +106,44 @@ if __name__ == "__main__":
 
     try:
         ipv6_disabled =  config.get('global' , 'disabled_ipv6')
-	flogger.debug ( "Read ipv6_disabled")
-    except  ConfigParser.Error:
+        flogger.debug("Read ipv6_disabled")
+    except ConfigParser.Error:
         ipv6_disabled = 0
 
     msg = announce.message(name=forbanname, dynpath=os.path.join(forbanpath,"var"))
 
-    if  ipv6_disabled == "1":
+    if ipv6_disabled == "1":
         flogger.info("forban_announce without ipv6")
         msg.disableIpv6()
 
     try:
-        destination =  config.get('global' , 'destination')
-        flogger.debug( "Read custom destinations: >"+ destination + "< ")
-        msg.setDestination( eval ( destination ) )
-    except  ConfigParser.Error:
+        cjdns_peers = config.get('global', 'cjdns_peers')
+        flogger.debug("cjdns_peers set to", cjdns_peers)
+    except ConfigParser.Error:
+        cjdns_peers = 1  # Announce to cjdns peers by default
+        flogger.debug("cjdns_peers set to 1 by default")
+
+    if cjdns_peers:  # Now confirm that the CJDNS peers script runs
+        try:
+            get_cjdns_peers()
+        except subprocess.CalledProcessError:
+            cjdns_peers = 0
+            flogger.debug("get_cjdns_peers failed, resetting cjdns_peers to 0")
+
+    try:
+        destination = config.get('global', 'destination')
+        flogger.debug("Read custom destinations: >" + destination + "<")
+        msg.setDestination(eval(destination))
+    except ConfigParser.Error:
         msg.setDestination()
+        destination = ["255.255.255.255", "ff02::1"]
 
     forbanindex = index.manage(sharedir=forbanshareroot, forbanglobal=forbanpath)
     flogger.info("forban_announce starting...")
 
     announce.flogger = flogger
 
-forbansharebundle = os.path.join(forbanshareroot,"forban")
+forbansharebundle = os.path.join(forbanshareroot, "forban")
 
 # bundle directory includes static pages but also index from the
 # Forban itself.
@@ -135,6 +158,9 @@ while 1:
         forbanindex.build()
         intervalcounter = indexrebuild
         flogger.debug("Index rebuilt")
+    # Recalculate CJDNS peers every time
+    flogger.debug("CJDNS PEERS:", get_cjdns_peers())
+    msg.setDestination(get_cjdns_peers() + destination)
     msg.gen()
     msg.auth(value=forbanindex.gethmac())
     flogger.debug(msg.get())
