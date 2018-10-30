@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     msg = announce.message(name=forbanname, dynpath=os.path.join(forbanpath,"var"))
 
-    if ipv6_disabled == "1":
+    if ipv6_disabled == "1":cjdns_peers
         flogger.info("forban_announce without ipv6")
         msg.disableIpv6()
 
@@ -159,7 +159,7 @@ while 1:
         intervalcounter = indexrebuild
         flogger.debug("Index rebuilt")
     # Recalculate CJDNS peers every time
-    flogger.debug("CJDNS PEERS:", get_cjdns_peers())
+    flogger.debug("CJDNS PEERS: " + str(get_cjdns_peers()))
     msg.setDestination(get_cjdns_peers() + destination)
     msg.gen()
     msg.auth(value=forbanindex.gethmac())
