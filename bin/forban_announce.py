@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     msg = announce.message(name=forbanname, dynpath=os.path.join(forbanpath,"var"))
 
-    if ipv6_disabled == "1":cjdns_peers
+    if ipv6_disabled == "1":
         flogger.info("forban_announce without ipv6")
         msg.disableIpv6()
 
