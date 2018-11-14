@@ -133,7 +133,8 @@ if __name__ == "__main__":
     try:
         destination = config.get('global', 'destination')
         flogger.debug("Read custom destinations: >" + destination + "<")
-        msg.setDestination(eval(destination))
+        destination = eval(destination)
+        msg.setDestination(destination)
     except ConfigParser.Error:
         msg.setDestination()
         destination = ["255.255.255.255", "ff02::1"]
@@ -158,9 +159,10 @@ while 1:
         forbanindex.build()
         intervalcounter = indexrebuild
         flogger.debug("Index rebuilt")
-    # Recalculate CJDNS peers every time
-    flogger.debug("CJDNS PEERS: " + str(get_cjdns_peers()))
-    msg.setDestination(get_cjdns_peers() + destination)
+    if cjdns_peers:
+    	# Recalculate CJDNS peers every time
+        flogger.debug("CJDNS PEERS: " + str(get_cjdns_peers()))
+	msg.setDestination(get_cjdns_peers() + destination)
     msg.gen()
     msg.auth(value=forbanindex.gethmac())
     flogger.debug(msg.get())
