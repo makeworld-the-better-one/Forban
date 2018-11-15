@@ -133,7 +133,7 @@ if __name__ == "__main__":
     try:
         destination = config.get('global', 'destination')
         flogger.debug("Read custom destinations: >" + destination + "<")
-        destination = eval(destination)
+        destination = eval(destination)  # Make it a list instead of a string
         msg.setDestination(destination)
     except ConfigParser.Error:
         msg.setDestination()
