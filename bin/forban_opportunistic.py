@@ -130,6 +130,7 @@ allindex.build()
 flogger.info("forban_opportunistic starting...")
 flogger.info("applied including regexp filter: %s" % ofilter)
 flogger.info("applied excluding regexp filter: %s" % efilter)
+
 while(1):
 
     for uuid in discoveredloot.listall():
@@ -158,15 +159,29 @@ while(1):
         elif not missingfiles:
             flogger.info("missing no files with %s (%s)" % (discoveredloot.getname(uuid),uuid))
         else:
+            # Get node IP address - XXX - this was in the missingfiles loop before,
+            # it should be fine here but be wary
+            if discoveredloot.getipv4(uuid) and fetch.urlheadinfo(discoveredloot.getipv4(uuid)) != False:
+                # There is a *valid* ipv4 address - ie it returns the right headers
+                source = discoveredloot.getipv4(uuid)
+                flogger.info("Using IPv4 address for %s: %s" % (uuid, source))
+            else if discoveredloot.getipv6(uuid) and fetch.urlheadinfo(discoveredloot.getipv6(uuid)) != False:
+                # There is a *valid* ipv6 address - ie it returns the right headers
+                source = discoveredloot.getipv6(uuid)
+                flogger.info("Using IPv6 address for %s: %s" % (uuid, source))
+            else:  # Neither, something has gone wrong
+                flogger.debug("Neither IPv4 or 6 could be found for %s, or the found addresses were invalid." % (uuid))
+                continue
             for missedfile in missingfiles:
                 if re.search(refilter, missedfile) and not (re.search(exfilter, missedfile) and efilter is not None):
-                    sourcev4 = discoveredloot.getipv4(uuid)
-                    url =  """http://%s:12555/s/?g=%s&f=b64e""" % (sourcev4, base64e.encode(missedfile))
+                    url = """http://%s:12555/s/?g=%s&f=b64e""" % (source, base64e.encode(missedfile))
                     localfile = forbanshareroot + "/" + missedfile
                     localsize = allindex.getfilesize(filename=missedfile)
                     remotesize = allindex.getfilesize(filename=missedfile,uuid=uuid)
                     if localsize < remotesize:
                         flogger.info("local file smaller - from %s fetching %s to be saved in %s" % (uuid,url,localfile))
+                        # XXX: what if urlget fails? Nothing happens, it should
+                        # switch to a different IP version
                         fetch.urlget(url,localfile)
                     elif localsize is False:
                         flogger.info("local file not existing - from %s fetching %s to be saved in %s" % (uuid,url,localfile))
@@ -178,4 +193,3 @@ while(1):
                     allindex.build()
 
     time.sleep(announceinterval*(announceinterval/(announceinterval-2)))
-
